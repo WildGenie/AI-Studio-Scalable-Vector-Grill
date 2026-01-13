@@ -1,0 +1,7 @@
+{
+  "name": "AI Studio Scalable Vector Grill",
+  "description": "Enter the wildest Drive Thru you've experienced. Design a custom stack, and experience the capabilities of our latest Audio 2 Audio models.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

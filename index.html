@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scalable Vector Grill</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Colors */
+            --metal-light: #e0e0e0;
+            --metal-mid: #909090;
+            --metal-dark: #505050;
+            --crt-bg: #1a1a1a;
+            --crt-glow: #42f5ad;
+            --crt-glow-dim: #267a56;
+            --warm-light: #ffebcd;
+            --warm-glow: #ffae42;
+            --brick-red: #a65e44;
+            --mortar-dark: #432316;
+            --mortar-gap: #110b09; /* New dark color for the missing mortar */
+            --plastic-red: #cc0000;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: #111;
+            font-family: 'VT323', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #root {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- CORE VIEWPORT --- */
+        #viewport {
+            width: 90vw;
+            height: 85vh;
+            max-width: 1000px;
+            max-height: 750px;
+            border: 5px solid #000;
+            background-color: #000; 
+            box-shadow: 0 0 40px rgba(0,0,0,1);
+            position: relative;
+            overflow: hidden;
+            container-type: size;
+        }
+
+        #scene-track {
+            display: flex;
+            width: 200%;
+            height: 100%;
+            transition: transform 3s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+        }
+
+        .scene {
+            width: 50%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        /* --- BACKGROUNDS --- */
+        #scene-order {
+            background: linear-gradient(to bottom, #36648B 0%, #6CA6CD 60%, #9FB6CD 100%);
+            box-shadow: inset 0 -20px 30px -10px rgba(0,0,0,0.4);
+            align-items: center; /* Center the box vertically so pole extends down */
+        }
+
+        #scene-pickup {
+             background: linear-gradient(to bottom, #333 60%, #1a1a1a 100%);
+        }
+
+        /* --- MENU BOARD --- */
+        #menu-board-container {
+            position: absolute;
+            left: 5%;
+            top: 15%;
+            height: 60%;
+            width: 35%;
+            z-index: 0;
+            transform: rotateY(10deg);
+        }
+
+        .menu-svg-layer {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(10px 10px 10px rgba(0,0,0,0.5));
+        }
+
+        /* --- ORDER BOX STYLES --- */
+        #order-box-container {
+           position: relative; 
+           height: 82%;
+           /* Using container query units ensures text shrinks when height/width of viewport shrinks */
+           font-size: 2.5cqmin; 
+           width: auto;
+           aspect-ratio: 2/3; /* Maintains the 400/600 ratio */
+           max-height: 90%;
+           max-width: 95%; /* Prevent width overflow on narrow screens */
+           z-index: 1; /* In front of menu */
+           transform: translateX(20%); /* Offset slightly to right to reveal menu */
+        }
+
+        .box-svg-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+            filter: drop-shadow(20px 20px 25px rgba(0,0,0,0.6));
+        }
+
+        #crt-screen {
+            position: absolute; 
+            top: 11.6%; 
+            left: 14%; 
+            width: 62.5%; 
+            height: 40%;
+            background-color: var(--crt-bg); z-index: 2; border-radius: 8px;
+            box-shadow: inset 0 0 30px #000; overflow: hidden; padding: 4%;
+            color: var(--crt-glow); text-transform: uppercase; display: flex;
+            flex-direction: column; border: 4px solid #333;
+        }
+
+        #crt-screen::before {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 10; background-size: 100% 4px, 3px 100%; pointer-events: none;
+        }
+        #crt-screen::after {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: rgba(18, 16, 16, 0.1); z-index: 10; pointer-events: none;
+            animation: flicker 0.15s infinite;
+        }
+        @keyframes flicker { 0%, 100% { opacity: 0.03; } 50% { opacity: 0.08; } }
+
+        .screen-header { font-size: 1.15em; text-align: center; margin-bottom: 2%; border-bottom: 2px dashed var(--crt-glow-dim); text-shadow: 0 0 5px var(--crt-glow); }
+        #order-list { flex-grow: 1; list-style: none; padding: 0; margin: 0; overflow-y: auto; font-size: 1.2em; text-shadow: 0 0 3px var(--crt-glow);}
+        #order-list::-webkit-scrollbar { width: 0px; }
+        #order-list li { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        #total-display { font-size: 1.5em; text-align: right; margin-top: 2%; border-top: 2px solid var(--crt-glow); padding-top: 2%; text-shadow: 0 0 5px var(--crt-glow); }
+        
+        /* New Sub-item style for ingredients */
+        .sub-item {
+            font-size: 0.8em;
+            color: var(--crt-glow-dim);
+            margin-top: -2px;
+            margin-bottom: 2px !important;
+            padding-left: 15px;
+        }
+
+        /* --- CONTROLS --- */
+        #controls-area {
+            position: absolute; 
+            top: 60%; 
+            left: 12.5%; 
+            width: 75%; 
+            z-index: 2;
+            display: flex; flex-direction: column; align-items: center; gap: 3%;
+        }
+
+        #speak-btn {
+            width: 50%; height: auto; aspect-ratio: 1.5;
+            background: radial-gradient(circle at 30% 30%, #ff4d4d, var(--plastic-red));
+            border: 4px solid #500; border-radius: 12px;
+            box-shadow: 0 6px 10px rgba(0,0,0,0.6), inset 0 0 15px rgba(0,0,0,0.2);
+            cursor: pointer; display: flex; justify-content: center; align-items: center; position: relative;
+            padding: 4%;
+            box-sizing: border-box;
+        }
+        
+        #speak-btn:active {
+            transform: scale(0.97) translateY(2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.4);
+            background: var(--plastic-red);
+        }
+
+        #speak-btn.listening {
+             background: radial-gradient(circle at 30% 30%, #4dff4d, #00cc00);
+             box-shadow: 0 0 15px #4dff4d;
+        }
+
+        .btn-grill {
+            position: absolute; width: 100%; height: 100%;
+            background-image: radial-gradient(#333 20%, transparent 20%);
+            background-size: 8px 8px; opacity: 0.2; border-radius: 10px;
+            top: 0; left: 0;
+        }
+
+        .btn-label {
+            position: relative; z-index: 5; color: white; font-weight: bold; font-size: 1.4em;
+            letter-spacing: 1px; text-align: center; line-height: 1.1;
+            text-shadow: 0px 2px 0px #7a0000, 0px 3px 4px rgba(0,0,0,0.5); pointer-events: none;
+        }
+
+        /* --- PICKUP WINDOW STYLES --- */
+        #pickup-window-container { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: flex-end; }
+        .window-svg-layer { width: 100%; height: 100%; background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.9) 100%); }
+        
+        /* New Sign Styles */
+        .pickup-sign-text {
+            font-family: 'VT323', monospace; font-size: 38px; fill: #fff; font-weight: bold;
+            text-shadow: 0 0 10px #ffce00, 0 0 20px #ffce00, 0 0 40px #ff0000;
+        }
+        /* Subtle flicker for the backlit sign face */
+        #sign-face { animation: signFlicker 0.2s infinite; }
+        @keyframes signFlicker { 0%, 100% { opacity: 0.95; } 50% { opacity: 1; } }
+
+
+        #sliding-glass-pane { transition: transform 1s ease-in-out; }
+        .drive-away #scene-track { transform: translateX(-50%); }
+        /* Window slides right only when the window-open class is added */
+        .window-open #sliding-glass-pane { transform: translateX(160px); }
+
+        /* Pacing Animation */
+        @keyframes pacing {
+            0% { transform: translate(0, 0) rotate(0deg); opacity: 0.5; }
+            25% { transform: translate(30px, 4px) rotate(2deg); opacity: 0.7; }
+            50% { transform: translate(0, 0) rotate(0deg); opacity: 0.5; }
+            75% { transform: translate(-30px, 4px) rotate(-2deg); opacity: 0.7; }
+            100% { transform: translate(0, 0) rotate(0deg); opacity: 0.5; }
+        }
+
+        /* --- FLYING INGREDIENTS --- */
+        .flying-ingredient {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            z-index: 100;
+            pointer-events: none;
+            filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));
+            animation: flyAcross 4s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
+        }
+
+        /* Updated animation: Left to Right */
+        @keyframes flyAcross {
+            0% { left: -20%; transform: rotate(0deg) scale(0.5); opacity: 0; }
+            10% { opacity: 1; }
+            100% { left: 120%; transform: rotate(360deg) scale(1.2); opacity: 1; }
+        }
+
+        /* --- GLITCH MODE --- */
+        .glitch-mode #scene-order {
+            /* Slower, less intense animation loop */
+            animation: bg-glitch 5s infinite;
+        }
+        
+        .glitch-mode #crt-screen {
+            box-shadow: 0 0 8px #ff00ff, inset 0 0 10px #ff00ff;
+            border-color: #ff00ff;
+            animation: screen-shake 3s infinite;
+        }
+        
+        .glitch-mode #crt-screen::before {
+            /* Reduced opacity for the pink overlay */
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(255, 0, 255, 0.04) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+        }
+        
+        .glitch-mode .screen-header {
+            color: #ff00ff;
+            text-shadow: 2px 2px #00ffff;
+        }
+        
+        .glitch-mode #order-list {
+            color: #00ff00;
+            text-shadow: 2px 0 #ff00ff;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .glitch-mode #total-display {
+             color: #ff00ff;
+             text-shadow: 2px 0 #0ff, -2px 0 #ff0;
+        }
+
+        @keyframes bg-glitch {
+            0%, 92% { filter: hue-rotate(0deg); transform: translate(0,0); }
+            93% { filter: hue-rotate(15deg) invert(0.05); transform: translate(1px, 1px); }
+            95% { filter: hue-rotate(-15deg); transform: translate(-1px, -1px); }
+            97% { filter: hue-rotate(30deg) invert(0.05); }
+            100% { filter: hue-rotate(0deg); transform: translate(0,0); }
+        }
+        
+        @keyframes screen-shake {
+             0%, 96% { transform: translate(0,0); }
+             97% { transform: translate(1px, 0); }
+             98% { transform: translate(-1px, 1px); }
+             99% { transform: translate(0, -1px); }
+             100% { transform: translate(0,0); }
+        }
+
+    </style>
+    <script type="importmap">
+    {
+      "imports": {
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
+      }
+    }
+    </script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
